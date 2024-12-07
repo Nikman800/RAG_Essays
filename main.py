@@ -2,10 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, Trainer, TrainingArguments
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from docx import Document
+from torch.utils.data import Dataset
 
 class WritingStyleRAG:
     def __init__(self, user_essays_dir):
@@ -94,38 +95,52 @@ class WritingStyleRAG:
             top_k (int): Number of most similar styles to consider
         
         Returns:
-            str: Stylized text
+            dict: Contains stylized text and similarity score
         """
         # Find most similar existing essays
         style_match = self.calculate_style_similarity(source_text)
-        
-        # Select most similar essay text
         reference_text = self.essay_texts[style_match['most_similar_index']]
         
-        # Tokenize inputs
+        # Create explicit style transfer prompt
+        prompt = f"""
+        Style: {reference_text[:200]}...
+        
+        Rewrite the following text in the same style as shown above:
+        {source_text}
+        
+        Styled version:
+        """
+        
+        # Tokenize with explicit prompt
         inputs = self.tokenizer(
-            source_text, 
-            reference_text, 
-            return_tensors='pt', 
-            max_length=self.max_length, 
+            prompt,
+            return_tensors='pt',
+            max_length=self.max_length,
             truncation=True
         )
         
-        # Generate stylized text
+        # Generate with more controlled parameters
         outputs = self.generation_model.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
             max_length=self.max_length,
             num_return_sequences=1,
-            temperature=0.7  # Add some creativity
+            temperature=0.7,
+            top_p=0.9,           # Nucleus sampling
+            repetition_penalty=1.2,  # Reduce repetition
+            length_penalty=1.0,   # Encourage complete sentences
+            do_sample=True       # Enable sampling for more natural text
         )
         
-        # Decode the generated text
+        # Decode and clean up the output
         stylized_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Remove the prompt if it appears in the output
+        stylized_text = stylized_text.replace(prompt.strip(), "").strip()
         
         return {
             'stylized_text': stylized_text,
-            'style_similarity': style_match['similarities'][style_match['most_similar_index']]
+            'style_similarity': style_match['similarities'][style_match['most_similar_index']],
+            'reference_style': reference_text[:200]  # Return sample of reference style
         }
 
 def read_source_text(filename):
