@@ -3,3 +3,6 @@ training_essays/
 
 # Temporary Microsoft Office files
 ~$*
+
+# OpenCV API key
+OpenCV_api_key
