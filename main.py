@@ -19,7 +19,7 @@ class WritingStyleRAG:
         self.user_essays_dir = user_essays_dir
 
         # Preprocessing configurations
-        self.max_length = 512  # Maximum token length
+        self.max_length = 1024  # Maximum token length
 
         # Embedding model for style capture
         self.style_embedding_model = SentenceTransformer('all-MiniLM-L6-v2', local_files_only=True)
@@ -31,6 +31,10 @@ class WritingStyleRAG:
         # Style-related attributes
         self.style_embeddings = []
         self.essay_texts = []
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.generation_model = self.generation_model.to(device)
+        self.style_embedding_model = self.style_embedding_model.to(device)
 
     def load_essays(self):
         """
@@ -118,6 +122,10 @@ class WritingStyleRAG:
             max_length=self.max_length,
             truncation=True
         )
+
+        # Move input tensors to the same device as the model
+        device = self.generation_model.device
+        inputs = {key: value.to(device) for key, value in inputs.items()}
 
         # Generate with more controlled parameters
         outputs = self.generation_model.generate(

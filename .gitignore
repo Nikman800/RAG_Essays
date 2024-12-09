@@ -6,3 +6,7 @@ training_essays/
 
 # OpenCV API key
 OpenCV_api_key
+
+# Ignore files containing 'stylized_output'
+*stylized_output*
+
