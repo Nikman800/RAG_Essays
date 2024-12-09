@@ -155,19 +155,29 @@ def read_source_text(filename):
         with open(filename, 'r', encoding='utf-8') as file:
             return file.read()
 
+def save_stylized_text(result, output_filename='stylized_output.docx'):
+    """Save stylized text to a Word document"""
+    doc = Document()
+    doc.add_heading('Stylized Text', 0)
+    doc.add_paragraph(result['stylized_text'])
+    
+    # Add style metrics
+    doc.add_heading('Style Metrics', level=1)
+    doc.add_paragraph(f"Style Similarity Score: {result['style_similarity']:.2f}")
+    
+    doc.save(output_filename)
+
 def main():
     rag_styler = WritingStyleRAG('training_essays')
-    
-    # Load user's essays
     num_essays = rag_styler.load_essays()
     print(f"Loaded {num_essays} essays for style learning")
     
-    # Read source text from file (now supports multiple formats)
-    source_text = read_source_text('source.docx')  # Can also use source.md or source.docx
+    source_text = read_source_text('source.docx')
     result = rag_styler.style_transfer(source_text)
     
-    print("Stylized Text:", result['stylized_text'])
-    print("Style Similarity Score:", result['style_similarity'])
+    # Save to Word document
+    save_stylized_text(result)
+    print(f"Stylized text saved to 'stylized_output.docx'")
 
 if __name__ == '__main__':
     main()
